@@ -13,6 +13,8 @@
     netbackup_backup_clients: []
     # Optionnel : nom du schedule à utiliser (vide = schedule par défaut de la policy)
     netbackup_schedule_name: ""
+    # Nom du security token à créer (obligatoire par l'API NetBackup)
+    netbackup_security_token_name: "ansible-{{ inventory_hostname }}-{{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
 
   tasks:
     - name: Récupérer le token JWT
@@ -39,7 +41,8 @@
         body_format: json
         headers:
           Authorization: "Bearer {{ login_result.json.token }}"
-        body: {}
+        body:
+          tokenName: "{{ netbackup_security_token_name }}"
         validate_certs: no
         return_content: yes
         status_code: [200, 201]
