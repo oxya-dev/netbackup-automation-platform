@@ -1,11 +1,10 @@
 ---
 - name: Obtenir le JWT puis créer un security token via /security/securitytokens
-  hosts: localhost
-  connection: local
+  hosts: "{{ nbu_targets | default(['lo3nbumsr01adm', 'em1nbumsr01adm', 'lo3hcprdmsr1', 'em1hcprdmsr1']) }}"
   gather_facts: no
   
   vars:
-    netbackup_host: "https://lo3nbumsr01adm"
+    netbackup_host: "https://lo3nbumsr01adm/netbackup"
     netbackup_api_port: 1556
     netbackup_api_base_url: "{{ netbackup_host }}:{{ netbackup_api_port }}"
     
@@ -16,7 +15,7 @@
   tasks:
     - name: "STEP 1 : Obtenir le JWT depuis /login"
       ansible.builtin.uri:
-        url: "{{ netbackup_api_base_url }}/netbackup/login"
+        url: "{{ netbackup_api_base_url }/login"
         method: POST
         body_format: json
         body:
@@ -41,7 +40,7 @@
 
     - name: "STEP 2 : Appeler /security/securitytokens avec le JWT"
       ansible.builtin.uri:
-        url: "{{ netbackup_api_base_url }}/netbackup/security/securitytokens"
+        url: "{{ netbackup_api_base_url }}/security/securitytokens"
         method: POST
         body_format: json
         headers:
