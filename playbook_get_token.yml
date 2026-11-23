@@ -1,21 +1,23 @@
 ---
-- name: Obtenir le JWT puis créer un security token via /security/securitytokens
-  hosts: "{{ nbu_targets | default(['lo3nbumsr01adm', 'em1nbumsr01adm', 'lo3hcprdmsr1', 'em1hcprdmsr1']) }}"
+- name: Appeler l'API NetBackup via clé API
+  hosts: all
   gather_facts: no
-  
   vars:
     netbackup_host: "https://lo3nbumsr01adm/netbackup"
-    netbackup_api_port: 1556
-    netbackup_api_base_url: "{{ netbackup_host }}:{{ netbackup_api_port }}"
-    
     # Identifiants récupérés depuis le coffre CyberArk Conjur côté AWX
     nbuxway_lo3_username: "{{ lookup('cyberark.conjur.conjur_variable', 'Vault-Prd/LOB-restricted/r-OXYA-CLOUD-FR/UNIX-LOC-220275-nbuxway/username') }}"
     nbuxway_lo3_password: "{{ lookup('cyberark.conjur.conjur_variable', 'Vault-Prd/LOB-restricted/r-OXYA-CLOUD-FR/UNIX-LOC-220275-nbuxway/password') }}"
+    # À renseigner : policy NetBackup à sauvegarder (obligatoire)
+    netbackup_policy_name: ""
+    # Optionnel : liste de clients à cibler (vide = tous les clients de la policy)
+    netbackup_backup_clients: []
+    # Optionnel : nom du schedule à utiliser (vide = schedule par défaut de la policy)
+    netbackup_schedule_name: ""
 
   tasks:
-    - name: "STEP 1 : Obtenir le JWT depuis /login"
+    - name: Récupérer le token JWT
       ansible.builtin.uri:
-        url: "{{ netbackup_api_base_url }/login"
+        url: "{{ netbackup_host }}/login"
         method: POST
         body_format: json
         body:
@@ -24,27 +26,19 @@
         validate_certs: no
         return_content: yes
         status_code: [200, 201]
-        timeout: 30
       register: login_result
-      retries: 3
-      delay: 5
-      until: login_result is succeeded
 
-    - name: Extraire le JWT
-      set_fact:
-        netbackup_jwt_token: "{{ login_result.json.token }}"
-
-    - name: Afficher le JWT obtenu
+    - name: Afficher le token
       debug:
-        msg: "✓ JWT Token obtenu: {{ netbackup_jwt_token[:50] }}..."
+        var: login_result.json.token
 
-    - name: "STEP 2 : Appeler /security/securitytokens avec le JWT"
+    - name: " Appeler /security/securitytokens avec le JWT"
       ansible.builtin.uri:
-        url: "{{ netbackup_api_base_url }}/security/securitytokens"
+        url: "{{ netbackup_host }}/security/securitytokens"
         method: POST
         body_format: json
         headers:
-          Authorization: "Bearer {{ netbackup_jwt_token }}"
+          Authorization: "Bearer {{ login_result.json.token }}"
         body: {}
         validate_certs: no
         return_content: yes
