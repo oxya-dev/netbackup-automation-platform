@@ -1,0 +1,62 @@
+---
+- name: Obtenir le JWT puis créer un security token via /security/securitytokens
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  
+  vars:
+    netbackup_host: "https://lo3nbumsr01adm"
+    netbackup_api_port: 1556
+    netbackup_api_base_url: "{{ netbackup_host }}:{{ netbackup_api_port }}"
+    
+    # Identifiants récupérés depuis le coffre CyberArk Conjur côté AWX
+    nbuxway_lo3_username: "{{ lookup('cyberark.conjur.conjur_variable', 'Vault-Prd/LOB-restricted/r-OXYA-CLOUD-FR/UNIX-LOC-220275-nbuxway/username') }}"
+    nbuxway_lo3_password: "{{ lookup('cyberark.conjur.conjur_variable', 'Vault-Prd/LOB-restricted/r-OXYA-CLOUD-FR/UNIX-LOC-220275-nbuxway/password') }}"
+
+  tasks:
+    - name: "STEP 1 : Obtenir le JWT depuis /login"
+      ansible.builtin.uri:
+        url: "{{ netbackup_api_base_url }}/netbackup/login"
+        method: POST
+        body_format: json
+        body:
+          userName: "{{ nbuxway_lo3_username }}"
+          password: "{{ nbuxway_lo3_password }}"
+        validate_certs: no
+        return_content: yes
+        status_code: [200, 201]
+        timeout: 30
+      register: login_result
+      retries: 3
+      delay: 5
+      until: login_result is succeeded
+
+    - name: Extraire le JWT
+      set_fact:
+        netbackup_jwt_token: "{{ login_result.json.token }}"
+
+    - name: Afficher le JWT obtenu
+      debug:
+        msg: "✓ JWT Token obtenu: {{ netbackup_jwt_token[:50] }}..."
+
+    - name: "STEP 2 : Appeler /security/securitytokens avec le JWT"
+      ansible.builtin.uri:
+        url: "{{ netbackup_api_base_url }}/netbackup/security/securitytokens"
+        method: POST
+        body_format: json
+        headers:
+          Authorization: "Bearer {{ netbackup_jwt_token }}"
+        body: {}
+        validate_certs: no
+        return_content: yes
+        status_code: [200, 201]
+        timeout: 30
+      register: security_token_result
+      retries: 3
+      delay: 5
+      until: security_token_result is succeeded
+
+    - name: Afficher la réponse complète
+      debug:
+        var: security_token_result.json
+
