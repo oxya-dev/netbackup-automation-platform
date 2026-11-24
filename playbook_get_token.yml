@@ -15,6 +15,9 @@
     netbackup_schedule_name: ""
     # Nom du security token à créer (obligatoire par l'API NetBackup)
     netbackup_security_token_name: "ansible-{{ inventory_hostname }}-{{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
+    netbackup_security_token_reason: "Client enrollment"
+    netbackup_security_token_allowed_count: 99999
+    netbackup_security_token_valid_for: 86313600
 
   tasks:
     - name: Récupérer le token JWT
@@ -40,9 +43,14 @@
         method: POST
         body_format: json
         headers:
+          Accept: "application/vnd.netbackup+json;version=14.0"
           Authorization: "Bearer {{ login_result.json.token }}"
+          Content-Type: "application/vnd.netbackup+json;version=14.0"
         body:
           tokenName: "{{ netbackup_security_token_name }}"
+          reason: "{{ netbackup_security_token_reason }}"
+          allowedCount: "{{ netbackup_security_token_allowed_count }}"
+          validFor: "{{ netbackup_security_token_valid_for }}"
         validate_certs: no
         return_content: yes
         status_code: [200, 201]
