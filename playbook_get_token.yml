@@ -49,8 +49,8 @@
         body:
           tokenName: "{{ netbackup_security_token_name }}"
           reason: "{{ netbackup_security_token_reason }}"
-          allowedCount: "{{ netbackup_security_token_allowed_count }}"
-          validFor: "{{ netbackup_security_token_valid_for }}"
+          allowedCount: "{{ netbackup_security_token_allowed_count | int }}"
+          validFor: "{{ netbackup_security_token_valid_for | int }}"
         validate_certs: no
         return_content: yes
         status_code: [200, 201]
